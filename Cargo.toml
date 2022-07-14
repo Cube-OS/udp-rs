@@ -1,5 +1,5 @@
 [package]
-name = "rust_udp"
+name = "rust-udp"
 version = "0.1.0"
 edition = "2018"
 
