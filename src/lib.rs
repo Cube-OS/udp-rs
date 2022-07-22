@@ -21,27 +21,29 @@
 use std::net::{UdpSocket,SocketAddr};
 use std::str::FromStr;
 use std::io::Result;
+use hal_stream::Stream;
+use std::time::Duration;
 
-/// High level read/write trait for UDP connections to implement
-pub trait Stream {
-    /// Writes an Udp command
-    ///
-    /// # Arguments
-    ///
-    /// `command` - Command to write
-    fn write(&self, command: Vec<u8>) -> Result<()>;
+// /// High level read/write trait for UDP connections to implement
+// pub trait Stream {
+//     /// Writes an Udp command
+//     ///
+//     /// # Arguments
+//     ///
+//     /// `command` - Command to write
+//     fn write(&self, command: Vec<u8>) -> Result<()>;
 
-    /// Reads from UDP Stream result
-    ///
-    fn read(&self, rx_len: usize) -> Result<Vec<u8>>;
+//     /// Reads from UDP Stream result
+//     ///
+//     fn read(&self, rx_len: usize) -> Result<Vec<u8>>;
 
-    /// Writes Udp command and reads result
-    ///
-    /// # Arguments
-    ///
-    /// `command` - Command to write and read from
-    fn transfer(&self, command: Vec<u8>, rx_len: usize) -> Result<Vec<u8>>;
-}
+//     /// Writes Udp command and reads result
+//     ///
+//     /// # Arguments
+//     ///
+//     /// `command` - Command to write and read from
+//     fn transfer(&self, command: Vec<u8>, rx_len: usize) -> Result<Vec<u8>>;
+// }
 
 /// This is the actual stream that data is tranferred over
 pub struct UdpStream {
@@ -73,16 +75,28 @@ impl Stream for UdpStream {
         }
     }
     /// Reading
-    fn read(&self, rx_len: usize) -> Result<Vec<u8>> {
+    fn read(&self, buf: &mut Vec<u8>, _rx_len: usize) -> Result<Vec<u8>> {
         self.socket.connect(self.target)?;
-        let mut buf = Vec::with_capacity(rx_len);
-        match self.socket.recv(&mut buf) {
+        // let mut buf = Vec::with_capacity(rx_len);
+        match self.socket.recv(buf) {
             Ok(len) => Ok(buf[..len].to_vec()),
             Err(e) => Err(e),
         }
     }
+    fn read_timeout(&self, buf: &mut Vec<u8>, _rx_len: usize, timeout: Duration) -> Result<Vec<u8>> {
+        self.socket.connect(self.target)?;
+        // let mut buf = Vec::with_capacity(rx_len);
+        self.socket.set_read_timeout(Some(timeout));
+        match self.socket.recv(buf) {
+            Ok(len) => {
+                self.socket.set_read_timeout(None);
+                Ok(buf[..len].to_vec())
+            }
+            Err(e) => Err(e),
+        }
+    }
     /// Write/Read transfer
-    fn transfer(&self, command: Vec<u8>, rx_len: usize) -> Result<Vec<u8>> {
+    fn transfer(&self, command: Vec<u8>, rx_len: usize, _delay: Duration) -> Result<Vec<u8>> {
         self.socket.connect(self.target)?;
         let mut buf = Vec::with_capacity(rx_len);
         match self.socket.send(&command) {
@@ -133,7 +147,8 @@ impl Connection {
     /// Reads from UDP Stream result
     ///
     pub fn read(&self, rx_len: usize) -> Result<Vec<u8>> {
-        self.stream.read(rx_len)
+        let mut buf = Vec::with_capacity(rx_len);
+        self.stream.read(&mut buf,rx_len)
     }
 
     /// Writes Udp command and reads result
@@ -142,7 +157,8 @@ impl Connection {
     ///
     /// `command` - Command to write and read from
     pub fn transfer(&self, command: Vec<u8>, rx_len: usize) -> Result<Vec<u8>> {
-        self.stream.transfer(command,rx_len)
+        let delay = Duration::new(0,0);
+        self.stream.transfer(command,rx_len,delay)
     }
 }
 
