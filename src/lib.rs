@@ -24,27 +24,6 @@ use std::io::Result;
 use hal_stream::Stream;
 use std::time::Duration;
 
-// /// High level read/write trait for UDP connections to implement
-// pub trait Stream {
-//     /// Writes an Udp command
-//     ///
-//     /// # Arguments
-//     ///
-//     /// `command` - Command to write
-//     fn write(&self, command: Vec<u8>) -> Result<()>;
-
-//     /// Reads from UDP Stream result
-//     ///
-//     fn read(&self, rx_len: usize) -> Result<Vec<u8>>;
-
-//     /// Writes Udp command and reads result
-//     ///
-//     /// # Arguments
-//     ///
-//     /// `command` - Command to write and read from
-//     fn transfer(&self, command: Vec<u8>, rx_len: usize) -> Result<Vec<u8>>;
-// }
-
 /// This is the actual stream that data is tranferred over
 pub struct UdpStream {
     socket: UdpSocket,
@@ -83,6 +62,7 @@ impl Stream for UdpStream {
             Err(e) => Err(e),
         }
     }
+    /// Reading with timeout
     fn read_timeout(&self, buf: &mut Vec<u8>, _rx_len: usize, timeout: Duration) -> Result<Vec<u8>> {
         self.socket.connect(self.target)?;
         // let mut buf = Vec::with_capacity(rx_len);
