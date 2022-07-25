@@ -45,6 +45,7 @@ impl UdpStream {
 }
 /// Implementation of Trait Stream for Stream Instance
 impl Stream for UdpStream {
+    type StreamError = std::io::Error;
     /// Writing
     fn write(&self, command: Vec<u8>) -> Result<()> {
         self.socket.connect(self.target)?;
@@ -93,11 +94,11 @@ impl Stream for UdpStream {
 
 /// Struct for communicating with a device via UDP
 pub struct Connection {
-    stream: Box<dyn Stream>,
+    stream: Box<dyn Stream<StreamError = std::io::Error>>,
 }
 impl Connection {
     /// I2C connection constructor
-    fn new(udp: Box<dyn Stream>) -> Self {
+    fn new(udp: Box<dyn Stream<StreamError = std::io::Error>>) -> Self {
         Self {
             stream: udp
         }
