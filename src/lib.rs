@@ -23,6 +23,73 @@ use std::str::FromStr;
 use std::io::Result;
 use hal_stream::Stream;
 use std::time::Duration;
+use math::round::ceil;
+
+/// Max size for UDP packages
+pub const MAX_BUFFER_SIZE: usize = 256;
+
+/// Trait for UDP message handling with unlimited size
+pub trait Message {
+    /// Receive function
+    fn recv_msg(&self) -> Result<(Vec<u8>,SocketAddr)>;
+    /// Send function
+    fn send_msg(&self, msg: &Vec<u8>, to: &SocketAddr) -> Result<()>;
+}
+
+impl Message for UdpSocket {
+    fn recv_msg(&self) -> Result<(Vec<u8>,SocketAddr)> {
+        let mut buf = [0u8; MAX_BUFFER_SIZE];
+        let mut out: Vec<u8> = Vec::new();
+        loop {
+            match self.recv_from(&mut buf) {
+                Ok((b,a)) => {
+                    out.append(&mut buf[1..b].to_vec());
+                    if buf[0] > 0 {
+                        #[cfg(test)]
+                        println!("{:?}",buf[0]);
+                        continue;
+                    }                    
+                    else {
+                        return Ok((out,a));
+                    }
+                }
+                Err(e) => return Err(e),
+            }
+        }
+    }
+
+    fn send_msg(&self, msg: &Vec<u8>, to: &SocketAddr) -> Result<()> {
+        // let mut buf = [0u8; MAX_BUFFER_SIZE];
+        let mut buf = msg.clone();
+        loop {
+            if buf.len() > MAX_BUFFER_SIZE-1 {
+                #[cfg(test)]
+                println!("{:?}",ceil(((buf.len()-1)/(MAX_BUFFER_SIZE-1)) as f64,0) as u8);
+                buf.insert(0,(ceil(((buf.len()-1)/(MAX_BUFFER_SIZE-1)) as f64,0)) as u8);
+                self.send_to(buf.drain(..MAX_BUFFER_SIZE).as_slice(), to)?;
+            }
+            else {
+                buf.insert(0,0);
+                match self.send_to(&buf,to) {
+                    Ok(_) => return Ok(()),
+                    Err(e) => return Err(e),
+                }
+            }
+        }
+    }
+}
+// pub fn unpack(socket: UdpSocket) -> Vec<u8> {
+//     let buf = Vec::new();
+//     while msg[0] >= 0
+//         buf.push(msg[1..]);
+//         msg[0] = msg[0] - 1;
+//         socket.recv()
+//     }
+// }
+
+// pub fn send_package(msg: Vec<u8>) -> Vec<u8> {
+
+// }
 
 /// This is the actual stream that data is tranferred over
 pub struct UdpStream {
@@ -77,18 +144,26 @@ impl Stream for UdpStream {
         }
     }
     /// Write/Read transfer
-    fn transfer(&self, command: Vec<u8>, rx_len: usize, _delay: Duration) -> Result<Vec<u8>> {
-        self.socket.connect(self.target)?;
-        let mut buf = Vec::with_capacity(rx_len);
-        match self.socket.send(&command) {
-            Ok(_) => {
-                match self.socket.recv(&mut buf) {
-                    Ok(len) => Ok(buf[..len].to_vec()),
-                    Err(e) => Err(e),
-                }
-            },
+    fn transfer(&self, command: Vec<u8>, _rx_len: usize, _delay: Duration) -> Result<Vec<u8>> {
+        match self.socket.send_msg(&command,&self.target) {
+            Ok(()) => match self.socket.recv_msg() {
+                Ok((msg,from)) => Ok(msg),
+                Err(e) => Err(e),
+            }
             Err(e) => Err(e),
         }
+        // self.socket.connect(self.target)?;
+        // let mut buf = [0u8; MAX_BUFFER_SIZE];
+        // match self.socket.send(&command) {
+        //     Ok(_) => {
+        //         // thread::sleep(delay);
+        //         match self.socket.recv_from(&mut buf) {
+        //             Ok((len,a)) => Ok(buf[..len].to_vec()),
+        //             Err(e) => Err(e),
+        //         }
+        //     },
+        //     Err(e) => Err(e),
+        // }
     }
 }
 
@@ -137,10 +212,54 @@ impl Connection {
     /// # Arguments
     ///
     /// `command` - Command to write and read from
-    pub fn transfer(&self, command: Vec<u8>, rx_len: usize) -> Result<Vec<u8>> {
+    pub fn transfer(&self, command: Vec<u8>) -> Result<Vec<u8>> {
         let delay = Duration::new(0,0);
+        let rx_len = 0;
         self.stream.transfer(command,rx_len,delay)
     }
 }
 
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::net::{Ipv4Addr,Ipv6Addr};
+    use std::str::FromStr;
+
+    #[test]
+    fn test_recv_msg() {
+        let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let addr = socket.local_addr().unwrap();
+        let msg = vec![1,2,3,4,5,6,7,8,9,10];
+        let mut buf = [0u8; 11];
+        buf[0] = 0;
+        buf[1..11].copy_from_slice(&msg);
+        socket.send_to(&buf,&addr).unwrap();
+        let (recv_msg,_) = socket.recv_msg().unwrap();
+        assert_eq!(msg,recv_msg);
+    }
+
+    #[test]
+    fn test_send_msg() {
+        let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let addr = socket.local_addr().unwrap();
+        let msg = vec![1,2,3,4,5,6,7,8,9,10];
+        socket.send_msg(&msg,&addr).unwrap();
+        let mut buf = [0u8; MAX_BUFFER_SIZE];
+        let (b,_) = socket.recv_from(&mut buf).unwrap();
+        assert_eq!(msg,buf[1..b].to_vec());
+    }
+
+    #[test]
+    fn test_send_recv_msg() {
+        let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+        let addr = socket.local_addr().unwrap();
+        let mut msg = [0u8; 1021].to_vec();
+        for i in 0..msg.len() {
+            msg[i] = i as u8;
+        }
+        socket.send_msg(&msg,&addr).unwrap();
+        let (recv_msg,_) = socket.recv_msg().unwrap();
+        assert_eq!(msg,recv_msg);
+    }
+}
