@@ -78,18 +78,6 @@ impl Message for UdpSocket {
         }
     }
 }
-// pub fn unpack(socket: UdpSocket) -> Vec<u8> {
-//     let buf = Vec::new();
-//     while msg[0] >= 0
-//         buf.push(msg[1..]);
-//         msg[0] = msg[0] - 1;
-//         socket.recv()
-//     }
-// }
-
-// pub fn send_package(msg: Vec<u8>) -> Vec<u8> {
-
-// }
 
 /// This is the actual stream that data is tranferred over
 pub struct UdpStream {
@@ -124,7 +112,6 @@ impl Stream for UdpStream {
     /// Reading
     fn read(&self, buf: &mut Vec<u8>, _rx_len: usize) -> Result<Vec<u8>> {
         self.socket.connect(self.target)?;
-        // let mut buf = Vec::with_capacity(rx_len);
         match self.socket.recv(buf) {
             Ok(len) => Ok(buf[..len].to_vec()),
             Err(e) => Err(e),
@@ -133,7 +120,6 @@ impl Stream for UdpStream {
     /// Reading with timeout
     fn read_timeout(&self, buf: &mut Vec<u8>, _rx_len: usize, timeout: Duration) -> Result<Vec<u8>> {
         self.socket.connect(self.target)?;
-        // let mut buf = Vec::with_capacity(rx_len);
         self.socket.set_read_timeout(Some(timeout));
         match self.socket.recv(buf) {
             Ok(len) => {
@@ -152,24 +138,12 @@ impl Stream for UdpStream {
             }
             Err(e) => Err(e),
         }
-        // self.socket.connect(self.target)?;
-        // let mut buf = [0u8; MAX_BUFFER_SIZE];
-        // match self.socket.send(&command) {
-        //     Ok(_) => {
-        //         // thread::sleep(delay);
-        //         match self.socket.recv_from(&mut buf) {
-        //             Ok((len,a)) => Ok(buf[..len].to_vec()),
-        //             Err(e) => Err(e),
-        //         }
-        //     },
-        //     Err(e) => Err(e),
-        // }
     }
 }
 
 /// Struct for communicating with a device via UDP
 pub struct Connection {
-    stream: Box<dyn Stream<StreamError = std::io::Error>>,
+    stream: Box<dyn Stream<StreamError = std::io::Error> + Send>,
 }
 impl Connection {
     /// I2C connection constructor
