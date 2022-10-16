@@ -147,7 +147,7 @@ pub struct Connection {
 }
 impl Connection {
     /// I2C connection constructor
-    fn new(udp: Box<dyn Stream<StreamError = std::io::Error>>) -> Self {
+    fn new(udp: Box<dyn Stream<StreamError = std::io::Error> + Send>) -> Self {
         Self {
             stream: udp
         }
