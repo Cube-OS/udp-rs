@@ -109,6 +109,17 @@ impl Stream for UdpStream {
             Err(e) => Err(e),
         }
     }
+    /// Writing single bytes in multiple write commands
+    fn write_bytes(&self, command: Vec<u8>) -> Result<()> {
+        self.socket.connect(self.target)?;
+        for d in command {
+            match self.socket.send(&command) {
+                Ok(_) => continue,
+                Err(e) => Err(e),
+            }
+        }
+        Ok(())
+    }
     /// Reading
     fn read(&self, buf: &mut Vec<u8>, _rx_len: usize) -> Result<Vec<u8>> {
         self.socket.connect(self.target)?;
