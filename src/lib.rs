@@ -112,7 +112,6 @@ impl Stream for UdpStream {
     /// Writing single bytes in multiple write commands
     fn write_bytes(&self, command: Vec<u8>) -> Result<()> {
         self.socket.connect(self.target)?;
-        // let mut err: std::io::Error = NULL;
         for d in command {
             match self.socket.send(&[d]) {
                 Ok(_) => continue,
