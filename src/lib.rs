@@ -80,6 +80,7 @@ impl Message for UdpSocket {
 }
 
 /// This is the actual stream that data is tranferred over
+#[derive(Debug)]
 pub struct UdpStream {
     socket: UdpSocket,
     target: SocketAddr,
@@ -99,7 +100,7 @@ impl UdpStream {
     }
 }
 /// Implementation of Trait Stream for Stream Instance
-impl Stream for UdpStream {
+impl hal_stream::Stream for UdpStream {
     type StreamError = std::io::Error;
     /// Writing
     fn write(&self, command: Vec<u8>) -> Result<()> {
