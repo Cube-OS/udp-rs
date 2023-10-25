@@ -6,5 +6,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-hal-stream = { git = "ssh://git@github.com/Cube-OS/hal-stream.git"}
+# hal-stream = { git = "ssh://git@github.com/Cube-OS/hal-stream.git"}
+hal-stream = { path = "../hal-stream" }
 libmath = "0.2.1"
