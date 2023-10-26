@@ -144,7 +144,8 @@ impl hal_stream::Stream for UdpStream {
         }
     }
     /// Write/Read transfer
-    fn transfer(&self, command: Vec<u8>, _rx_len: usize, _delay: Duration) -> Result<Vec<u8>> {
+    fn transfer(&self, command: Vec<u8>, _rx_len: usize, delay: Option<Duration>) -> Result<Vec<u8>> {
+        self.socket.set_read_timeout(delay);
         match self.socket.send_msg(&command,&self.target) {
             Ok(()) => match self.socket.recv_msg() {
                 Ok((msg,from)) => Ok(msg),
@@ -201,9 +202,18 @@ impl Connection {
     ///
     /// `command` - Command to write and read from
     pub fn transfer(&self, command: Vec<u8>) -> Result<Vec<u8>> {
-        let delay = Duration::new(0,0);
+        // let delay = Duration::new(0,0);
         let rx_len = 0;
-        self.stream.transfer(command,rx_len,delay)
+        self.stream.transfer(command,rx_len,None)
+    }
+
+    /// Writes UDP command and reads result, read times out after timeout
+    /// # Arguments
+    /// `command` - Command to write and read from
+    /// `timeout` - Timeout for the read operation
+    pub fn transfer_timeout(&self, command: Vec<u8>, timeout: Duration) -> Result<Vec<u8>> {
+        let rx_len = 0;
+        self.stream.transfer(command,rx_len,Some(timeout))
     }
 }
 
