@@ -2,6 +2,7 @@
 name = "udp-rs"
 version = "0.1.0"
 edition = "2018"
+repository = "https://github.com/Cube-OS/udp-rs"
 
 [dependencies]
 hal-stream = { version = "0.1.14", registry = "cube-os"}
